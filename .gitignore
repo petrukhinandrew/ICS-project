@@ -1,0 +1,5 @@
+videos/
+__pycache__/
+mylib/__pycache__/
+luma/img/
+luma/__pycache__/
