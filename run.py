@@ -18,12 +18,14 @@ import cv2
 import datetime
 from dataclasses import dataclass
 
+
 @dataclass
 class CameraTelemetry:
     timestamp: datetime.datetime = datetime.datetime.now()
     people_entered: int = 0
     people_left: int = 0
     luma_values: PicLumaValues = None
+
 
 class RepeatTimer(threading.Timer):
     def run(self):
@@ -41,28 +43,16 @@ frame = None
 
 def run():
     global frame, luma_values
-
-    # initialize the list of class labels MobileNet SSD was trained to
-    # detect
     CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
                "bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
                "dog", "horse", "motorbike", "person", "pottedplant", "sheep",
                "sofa", "train", "tvmonitor"]
-
-    # load our serialized model from disk
     net = cv2.dnn.readNetFromCaffe(
         "mobilenet_ssd/MobileNetSSD_deploy.prototxt", "mobilenet_ssd/MobileNetSSD_deploy.caffemodel")
+    # vs = VideoStream(config.url).start()
+    vs = cv2.VideoCapture(config.url)
 
-    # run webcam stream if no url provided
-    vs = VideoStream(config.url).start(
-    ) if config.url != None else VideoStream().start()
-
-    # put path to video file
-    # vs = cv2.VideoCapture(videopath)
     time.sleep(2.0)
-
-    W = None
-    H = None
 
     ct = CentroidTracker(40, 50)
     trackers = []
@@ -80,14 +70,13 @@ def run():
             luma_values = LumaCalculator.calculate(frame.copy())
 
     luma_timer = RepeatTimer(60, calculate_luma)
-    
+
     fps = FPS().start()
     luma_timer.start()
     if config.Thread:
         vs = thread.ThreadingClass(config.url)
-    
-    
-    def exit_gracefully():
+
+    def exit_gracefully(sig, frame):
         fps.stop()
         luma_timer.cancel()
         print("[INFO] elapsed time: {:.2f}".format(fps.elapsed()))
@@ -108,58 +97,55 @@ def run():
     signal.signal(signal.SIGINT, exit_gracefully)
 
     def get_frame():
-        return imutils.resize(vs.read() if config.url is None else vs.read()[1], width=500)
+        frame = vs.read()[1]
+        return None if frame is None else imutils.resize(frame, width=500)
+    
+    while get_frame() is None:
+        continue
 
-    while True:
-        frame = get_frame()
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    W, H = get_frame().shape[:2]
 
-        if W is None or H is None:
-            (H, W) = frame.shape[:2]
-
+    def update_trackers():
         rects = []
+        for tracker in trackers:
+            tracker.update(rgb)
+            pos = tracker.get_position()
 
-        if totalFrames % config.SkipFrames == 0:
-            trackers = []
+            startX = int(pos.left())
+            startY = int(pos.top())
+            endX = int(pos.right())
+            endY = int(pos.bottom())
 
-            blob = cv2.dnn.blobFromImage(frame, 0.007843, (W, H), 127.5)
-            net.setInput(blob)
-            detections = net.forward()
+            rects.append((startX, startY, endX, endY))
+        return rects
 
-            # loop over the detections
-            for i in np.arange(0, detections.shape[2]):
-                confidence = detections[0, 0, i, 2]
+    def refresh_trackers():
+        trackers.clear()
 
-                if confidence > config.Confidence:
-                    idx = int(detections[0, 0, i, 1])
-                    if CLASSES[idx] != "person":
-                        continue
+        blob = cv2.dnn.blobFromImage(frame, 0.007843, (W, H), 127.5)
+        net.setInput(blob)
+        detections = net.forward()
 
-                    box = detections[0, 0, i, 3:7] * np.array([W, H, W, H])
-                    (startX, startY, endX, endY) = box.astype("int")
+        for i in np.arange(0, detections.shape[2]):
+            confidence = detections[0, 0, i, 2]
 
-                    corr_tracker = dlib.correlation_tracker()
-                    rect = dlib.rectangle(startX, startY, endX, endY)
-                    corr_tracker.start_track(rgb, rect)
+            if confidence > config.Confidence:
+                class_id = int(detections[0, 0, i, 1])
+                if CLASSES[class_id] != "person":
+                    continue
 
-                    trackers.append(corr_tracker)
-        else:
-            for tracker in trackers:
-                tracker.update(rgb)
-                pos = tracker.get_position()
+                box = detections[0, 0, i, 3:7] * np.array([W, H, W, H])
+                (startX, startY, endX, endY) = box.astype("int")
 
-                startX = int(pos.left())
-                startY = int(pos.top())
-                endX = int(pos.right())
-                endY = int(pos.bottom())
+                corr_tracker = dlib.correlation_tracker()
+                rect = dlib.rectangle(startX, startY, endX, endY)
+                corr_tracker.start_track(rgb, rect)
 
-                rects.append((startX, startY, endX, endY))
+                trackers.append(corr_tracker)
 
-        objects = ct.update(rects)
-
-        # loop over the tracked objects
+    def check_for_entries(objects):
+        entry_saved = True
         for (object_id, centroid) in objects.items():
-
             obj = trackableObjects.get(object_id, None)
 
             if obj is None:
@@ -183,20 +169,37 @@ def run():
                     entry_saved = False
 
             trackableObjects[object_id] = obj
+        return entry_saved
 
-        if config.Log:
-            if luma_values != None:
-                logger.log_luma(luma_values)
-                luma_values = None
-            if not entry_saved:
-                logger.log_pass(totalDown, totalUp, totalDown - totalUp)
-                entry_saved = True
+    while True:
+        frame = get_frame()
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        
+        rects = []
+
+        if totalFrames % config.SkipFrames == 0:
+            refresh_trackers()
+        else:
+            rects = update_trackers()
+
+        objects = ct.update(rects)
+
+        entry_saved = check_for_entries(objects)
+
+        # TODO() send values
+        if luma_values != None:
+            logger.log_luma(luma_values)
+            luma_values = None
+
+        if not entry_saved:
+            logger.log_pass(totalDown, totalUp, totalDown - totalUp)
+            entry_saved = True
+        cv2.imshow("blabla", frame)
         totalFrames += 1
         fps.update()
 
-    exit_gracefully()
-    
+    exit_gracefully(signal.SIGINT, None)
+
+
 if __name__ == "__main__":
     run()

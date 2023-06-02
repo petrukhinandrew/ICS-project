@@ -3,6 +3,7 @@ import json
 from typing import Dict
 from dataclasses import dataclass
 from datetime import datetime
+
 @dataclass
 class ServerInfo:
     host: str
