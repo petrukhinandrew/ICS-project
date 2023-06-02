@@ -49,8 +49,8 @@ def run():
                "sofa", "train", "tvmonitor"]
     net = cv2.dnn.readNetFromCaffe(
         "mobilenet_ssd/MobileNetSSD_deploy.prototxt", "mobilenet_ssd/MobileNetSSD_deploy.caffemodel")
-    # vs = VideoStream(config.url).start()
-    vs = cv2.VideoCapture(config.url)
+    vs = VideoStream(config.url).start()
+    
 
     time.sleep(2.0)
 
