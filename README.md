@@ -20,3 +20,7 @@ Finally, run `python3 run.py`. Use `Ctrl+C` to exit. You can also run `python3 l
 - Try using cv2 BGR2HVS instead of manual color conversion
 - Make reading logs more handy
 - Refactoring + rename `mylib`
+- Optional bounds for video sending to web page
+- optional video stream
+- add locks
+- t.isoformat(' ', 'seconds')

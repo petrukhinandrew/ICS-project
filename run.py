@@ -1,6 +1,5 @@
 from mylib.centroidtracker import CentroidTracker
 from mylib.trackableobject import TrackableObject
-from mylib.mailer import Mailer
 from mylib import config, thread
 import signal
 from logger import Logger
@@ -17,6 +16,7 @@ import schedule
 
 import dlib
 import cv2
+
 
 class RepeatTimer(threading.Timer):
     def run(self):
@@ -53,14 +53,9 @@ def run():
     # vs = cv2.VideoCapture(videopath)
     time.sleep(2.0)
 
-    # initialize the frame dimensions (we'll set them as soon as we read
-    # the first frame from the video)
     W = None
     H = None
 
-    # instantiate our centroid tracker, then initialize a list to store
-    # each of our dlib correlation trackers, followed by a dictionary to
-    # map each unique object ID to a TrackableObject
     ct = CentroidTracker(maxDisappeared=40, maxDistance=50)
     trackers = []
     trackableObjects = {}
@@ -110,14 +105,7 @@ def run():
 
     # loop over frames from the video stream
     while True:
-        # grab the next frame and handle if we are reading from either
-        # VideoCapture or VideoStream
-        frame = vs.read() if config.url is None else vs.read()[1]
-
-        # resize the frame to have a maximum width of 500 pixels (the
-        # less data we have, the faster we can process it), then convert
-        # the frame from BGR to RGB for dlib
-        frame = imutils.resize(frame, width=500)
+        frame = imutils.resize(vs.read() if config.url is None else vs.read()[1], width=500)
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         # if the frame dimensions are empty, set them
@@ -132,7 +120,7 @@ def run():
 
         # check to see if we should run a more computationally expensive
         # object detection method to aid our tracker
-        if totalFrames % config.SkipFrames == 0:
+        if totalFrames % config.SkipFrames == 0: # TODO(need refactoring)
             # set the status and initialize our new set of object trackers
             status = "Detecting"
             trackers = []
@@ -330,16 +318,11 @@ def run():
     if config.ShowVideo:
         cv2.destroyAllWindows()
 
+if __name__ == "_main__":
+    if config.Scheduler:
+        schedule.every().day.at(config.SchedulerStartTime).do(run)
+        while 1:
+            schedule.run_pending()
 
-# learn more about different schedules here: https://pypi.org/project/schedule/
-if config.Scheduler:
-    # Runs for every 1 second
-    # schedule.every(1).seconds.do(run)
-    # Runs at every day (09:00 am). You can change it.
-    schedule.every().day.at(config.SchedulerStartTime).do(run)
-
-    while 1:
-        schedule.run_pending()
-
-else:
-    run()
+    else:
+        run()

@@ -2,7 +2,7 @@ from tb_device_mqtt import TBDeviceMqttClient, TBPublishInfo
 import json
 from typing import Dict
 from dataclasses import dataclass
-
+from datetime import datetime
 @dataclass
 class ServerInfo:
     host: str
@@ -24,7 +24,7 @@ def get_server_info_from_config(config_path: str, server_tag: str = "demoserver"
 
 server = get_server_info_from_config("config.json")
 
-temperature = 5
+temperature = 127
 
 telemetry = {"temperature": temperature}
 #where to store AC?
