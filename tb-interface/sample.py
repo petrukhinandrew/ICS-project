@@ -25,7 +25,7 @@ def get_server_info_from_config(config_path: str, server_tag: str = "demoserver"
 
 server = get_server_info_from_config("config.json")
 
-temperature = 127
+temperature = 12
 
 telemetry = {"temperature": temperature}
 #where to store AC?

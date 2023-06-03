@@ -3,7 +3,7 @@ from mylib.trackableobject import TrackableObject
 from mylib import config, thread
 import signal
 from logger import Logger
-from luma.luma_calculator import LumaCalculator, PicLumaValues
+from luma_calculator import LumaCalculator, PicLumaValues
 
 import numpy as np
 
@@ -49,7 +49,7 @@ def run():
                "sofa", "train", "tvmonitor"]
     net = cv2.dnn.readNetFromCaffe(
         "mobilenet_ssd/MobileNetSSD_deploy.prototxt", "mobilenet_ssd/MobileNetSSD_deploy.caffemodel")
-    vs = VideoStream(config.url).start()
+    vs = VideoStream().start()
     
 
     time.sleep(2.0)
@@ -73,6 +73,7 @@ def run():
 
     fps = FPS().start()
     luma_timer.start()
+
     if config.Thread:
         vs = thread.ThreadingClass(config.url)
 
@@ -97,7 +98,7 @@ def run():
     signal.signal(signal.SIGINT, exit_gracefully)
 
     def get_frame():
-        frame = vs.read()[1]
+        frame = vs.read()
         return None if frame is None else imutils.resize(frame, width=500)
     
     while get_frame() is None:
@@ -144,6 +145,7 @@ def run():
                 trackers.append(corr_tracker)
 
     def check_for_entries(objects):
+        global totalDown
         entry_saved = True
         for (object_id, centroid) in objects.items():
             obj = trackableObjects.get(object_id, None)

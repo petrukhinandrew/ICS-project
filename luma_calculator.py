@@ -1,12 +1,7 @@
 from typing import Tuple
 import numpy as np
-import cv2
 from dataclasses import dataclass
 from statistics import geometric_mean
-
-BLACK_THR, WHITE_THR = 9.0, 95.0
-BLACK_LIM, WHITE_LIM = 0.6, 0.6
-
 
 @dataclass
 class PicLumaValues:
@@ -29,23 +24,24 @@ class PicLumaValues:
             self.mean_filtered_lightness,
             self.geom_mean_filtered_lightness,
             self.median_filtered_lightness)
-
+    def as_dist(self):
+        pass
 
 class LumaCalculator:
-    def calculate(pic: np.ndarray) -> PicLumaValues:
+    BLACK_THR, WHITE_THR = 9.0, 95.0
+    BLACK_LIM, WHITE_LIM = 0.6, 0.6
+
+    def calculate(pic: np.ndarray):
         luma_vector = LumaCalculator.__picture_luma(pic)
         lightness_vector = [LumaCalculator.__luma_to_perc_lightness(
             pix) for pix in luma_vector]
         filtered_lightness_vector = LumaCalculator.__filter_lightness_vector(
             lightness_vector)
+        
         return PicLumaValues(*(np.mean(luma_vector), geometric_mean(luma_vector)) + LumaCalculator.__calculate_lightness_values(lightness_vector) + LumaCalculator.__calculate_lightness_values(filtered_lightness_vector))
 
     @staticmethod
     def __calculate_lightness_values(lightness_vector: np.ndarray) -> Tuple[float, float, float]:
-        """
-        : param luma_vector: array of luma values for each pixel in picture
-        : return (mean luma, mean perceived lightness, median perceived lightness, geometric mean perceived lightness)
-        """
         mean_perc_lightness = np.mean(lightness_vector)
         median_perc_lightness = np.median(lightness_vector)
         geom_mean_perc_lightness = geometric_mean(lightness_vector)
@@ -79,25 +75,19 @@ class LumaCalculator:
     def __bw_lightness_parts(lightness_vector: np.ndarray) -> Tuple[float, float]:
         l_vec_size = len(lightness_vector)
         black = len(
-            list(filter(lambda x: x < BLACK_THR, lightness_vector))) / l_vec_size
+            list(filter(lambda x: x < LumaCalculator.BLACK_THR, lightness_vector))) / l_vec_size
         white = len(
-            list(filter(lambda x: x > WHITE_THR, lightness_vector))) / l_vec_size
+            list(filter(lambda x: x > LumaCalculator.WHITE_THR, lightness_vector))) / l_vec_size
         return (black, white)
 
     @staticmethod
     def __filter_lightness_vector(lightness_vector: np.ndarray) -> np.ndarray:
         b, w = LumaCalculator.__bw_lightness_parts(lightness_vector)
         filtered = lightness_vector.copy()
-        if b < BLACK_LIM:
+        if b < LumaCalculator.BLACK_LIM:
             filtered = np.array(
-                list(filter(lambda x: BLACK_THR < x, filtered)))
-        if w < WHITE_LIM:
+                list(filter(lambda x: LumaCalculator.BLACK_THR < x, filtered)))
+        if w < LumaCalculator.WHITE_LIM:
             filtered = np.array(
-                list(filter(lambda x: x < WHITE_THR, filtered)))
+                list(filter(lambda x: x < LumaCalculator.WHITE_THR, filtered)))
         return filtered
-
-
-if __name__ == "__main__":
-    # test samples
-    print(LumaCalculator.calculate(cv2.imread("img/lena_bright.png")))
-    print(LumaCalculator.calculate(cv2.imread("img/lena.png")))
