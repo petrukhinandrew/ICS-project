@@ -12,11 +12,12 @@ import cv2
 import dlib
 import time
 
-CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
+NET_CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
            "bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
            "dog", "horse", "motorbike", "person", "pottedplant", "sheep",
            "sofa", "train", "tvmonitor"]
 
+LUMA_DELAY = 10
 
 class App:
     def __init__(self) -> None:
@@ -68,7 +69,7 @@ class App:
 
             if confidence > config.Confidence:
                 class_id = int(detections[0, 0, i, 1])
-                if CLASSES[class_id] != "person":
+                if NET_CLASSES[class_id] != "person":
                     continue
 
                 box = detections[0, 0, i, 3:7] * np.array(
@@ -110,12 +111,12 @@ class App:
             obj.centroids.append(centroid)
 
             if not obj.counted: # push into queue instead
-                if direction < 0 and centroid[1] < H // 2:
+                if direction < 0 and centroid[1] < self.frame_height // 2:
                     totalUp += 1
                     obj.counted = True
                     entry_saved = False
 
-                elif direction > 0 and centroid[1] > H // 2:
+                elif direction > 0 and centroid[1] > self.frame_height // 2:
                     totalDown += 1
                     obj.counted = True
                     entry_saved = False
@@ -126,7 +127,7 @@ class App:
     def _send_telemetry(self):
         while not self.telemetry_queue.empty():
             telemetry = self.telemetry_queue.get()
-            # TODO()
+            print(telemetry)
 
     def run(self):
         while 1:
@@ -137,17 +138,18 @@ class App:
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             rects = []
 
-            # if time.time() - self.luma_last_frame > 60:
-            #     self.luma_frame_queue.put(frame.copy())
-            #     self.luma_last_frame = time.time()
+            if time.time() - self.luma_last_frame > LUMA_DELAY:
+                self.luma_frame_queue.put(frame.copy())
+                self.luma_last_frame = time.time()
 
             if self.total_frames % config.SkipFrames == 0:
                 self._refresh_trackers(frame, rgb)
             else:
                 rects = self._update_trackers(rgb)
+
             objects = self.centroid_tracker.update(rects)
             self._register_entries(objects)
-            # TODO
+            
             self._send_telemetry()
         cv2.destroyAllWindows()
 

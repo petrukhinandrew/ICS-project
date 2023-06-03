@@ -5,3 +5,4 @@ imutils
 opencv-python
 scipy
 cmake
+dlib
