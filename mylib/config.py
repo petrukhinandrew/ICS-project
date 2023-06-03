@@ -13,7 +13,9 @@ ALERT = False
 Threshold = 10
 # Threading ON/OFF
 Thread = False
-
+HOST = "demo.thingsboard.io"
+CAM_DT = "8JpXCiP482pz9y7tBF9t"
+LUMA_DT = ""
 SkipFrames = 30
 Confidence = 0.4
 ShowVideo = False

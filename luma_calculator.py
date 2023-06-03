@@ -1,50 +1,27 @@
 from typing import Tuple
 import numpy as np
-from dataclasses import dataclass
 from statistics import geometric_mean
+from telemetry import LumaTelemetry
 
-@dataclass
-class PicLumaValues:
-    mean_luma: float
-    geom_mean_luma: float
-    mean_lightness: float
-    geom_mean_lightness: float
-    median_lightness: float
-    mean_filtered_lightness: float
-    geom_mean_filtered_lightness: float
-    median_filtered_lightness: float
-
-    def as_tuple(self) -> Tuple[float]:
-        return (
-            self.mean_luma,
-            self.geom_mean_luma,
-            self.mean_lightness,
-            self.geom_mean_lightness,
-            self.median_lightness,
-            self.mean_filtered_lightness,
-            self.geom_mean_filtered_lightness,
-            self.median_filtered_lightness)
-    def as_dist(self):
-        pass
 
 class LumaCalculator:
-    BLACK_THR, WHITE_THR = 9.0, 95.0
-    BLACK_LIM, WHITE_LIM = 0.6, 0.6
+    BLACK_THR, WHITE_THR: float = 9.0, 95.0
+    BLACK_LIM, WHITE_LIM: float = 0.6, 0.6
 
-    def calculate(pic: np.ndarray):
+    def calculate(pic: np.ndarray) -> LumaTelemetry:
         luma_vector = LumaCalculator.__picture_luma(pic)
         lightness_vector = [LumaCalculator.__luma_to_perc_lightness(
             pix) for pix in luma_vector]
         filtered_lightness_vector = LumaCalculator.__filter_lightness_vector(
             lightness_vector)
-        
-        return PicLumaValues(*(np.mean(luma_vector), geometric_mean(luma_vector)) + LumaCalculator.__calculate_lightness_values(lightness_vector) + LumaCalculator.__calculate_lightness_values(filtered_lightness_vector))
+
+        return LumaTelemetry(*(np.mean(luma_vector), geometric_mean(luma_vector)) + LumaCalculator.__calculate_lightness_values(lightness_vector) + LumaCalculator.__calculate_lightness_values(filtered_lightness_vector))
 
     @staticmethod
     def __calculate_lightness_values(lightness_vector: np.ndarray) -> Tuple[float, float, float]:
-        mean_perc_lightness = np.mean(lightness_vector)
-        median_perc_lightness = np.median(lightness_vector)
-        geom_mean_perc_lightness = geometric_mean(lightness_vector)
+        mean_perc_lightness: float = np.mean(lightness_vector)
+        median_perc_lightness: float = np.median(lightness_vector)
+        geom_mean_perc_lightness: float = geometric_mean(lightness_vector)
         return (mean_perc_lightness, median_perc_lightness, geom_mean_perc_lightness)
 
     @staticmethod
