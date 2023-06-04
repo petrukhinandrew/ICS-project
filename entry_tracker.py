@@ -25,7 +25,7 @@ class EntryTracker:
 
         self.frame_width = frame_width
         self.frame_height = frame_height
-        self.confidence = confidence
+        self.confidence_limit = confidence
         self.telemetry_queue = telemetry_queue
 
     def __refresh_trackers(self, frame, rgb):
@@ -34,12 +34,13 @@ class EntryTracker:
         blob = cv2.dnn.blobFromImage(
             frame, 0.007843, (self.frame_width, self.frame_height), 127.5)
         self.net.setInput(blob)
+
         detections = self.net.forward()
 
         for i in np.arange(0, detections.shape[2]):
             confidence = detections[0, 0, i, 2]
 
-            if confidence > self.confidence:
+            if confidence > self.confidence_limit:
                 class_id = int(detections[0, 0, i, 1])
                 if NET_CLASSES[class_id] != "person":
                     continue
@@ -103,8 +104,7 @@ class EntryTracker:
             self.trackable_objects[object_id] = obj
         return coords
 
-    def process(self, frame, refresh_trackers):
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    def process(self, frame, rgb, refresh_trackers):
         rects = []
         if refresh_trackers:
             self.__refresh_trackers(frame, rgb)
@@ -112,4 +112,5 @@ class EntryTracker:
             rects = self.__update_trackers(rgb)
 
         objects = self.centroid_tracker.update(rects)
+
         return self.__register_entries(objects)
