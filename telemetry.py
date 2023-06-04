@@ -1,6 +1,7 @@
-from tb_device_mqtt import TBDeviceMqttClient, TBPublishInfo
 import enum
 from dataclasses import dataclass
+
+from tb_device_mqtt import TBDeviceMqttClient, TBPublishInfo
 
 
 class TelemetryType(enum.Enum):

@@ -1,10 +1,13 @@
+from datetime import datetime
+
 import cv2
 import dlib
 import numpy as np
+
 from centroid_tracker import CentroidTracker
 from trackable_object import TrackableObject
 from telemetry import EntryTelemetry, TelemetryWrapper, TelemetryType
-from datetime import datetime
+
 NET_CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
                "bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
                "dog", "horse", "motorbike", "person", "pottedplant", "sheep",
@@ -13,19 +16,19 @@ NET_CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
 
 class EntryTracker:
     def __init__(self, frame_width, frame_height, confidence, telemetry_queue) -> None:
-        self.centroid_tracker = CentroidTracker(40, 50)
+        self.centroid_tracker = CentroidTracker(40, 15)
         self.trackers = []
         self.trackable_objects = {}
 
         self.net = cv2.dnn.readNetFromCaffe(
             "mobilenet_ssd/MobileNetSSD_deploy.prototxt", "mobilenet_ssd/MobileNetSSD_deploy.caffemodel")
-        
+
         self.frame_width = frame_width
         self.frame_height = frame_height
         self.confidence = confidence
         self.telemetry_queue = telemetry_queue
 
-    def _refresh_trackers(self, frame, rgb):
+    def __refresh_trackers(self, frame, rgb):
         self.trackers.clear()
 
         blob = cv2.dnn.blobFromImage(
@@ -51,7 +54,7 @@ class EntryTracker:
 
                 self.trackers.append(corr_tracker)
 
-    def _update_trackers(self, rgb):
+    def __update_trackers(self, rgb):
         rects = []
         for tracker in self.trackers:
             tracker.update(rgb)
@@ -65,13 +68,13 @@ class EntryTracker:
             rects.append((startX, startY, endX, endY))
         return rects
 
-    def _put_telemetry(self, direction):
+    def __put_telemetry(self, direction):
         telemetry = EntryTelemetry(
             datetime.now().isoformat(sep=" "), direction)
         self.telemetry_queue.put(TelemetryWrapper(
             TelemetryType.T_ENTRY, telemetry))
 
-    def _register_entries(self, objects):
+    def __register_entries(self, objects):
         for (object_id, centroid) in objects.items():
             obj = self.trackable_objects.get(object_id, None)
 
@@ -80,17 +83,18 @@ class EntryTracker:
                 self.trackable_objects[object_id] = obj
                 continue
 
-            y_axis = [c[1] for c in obj.centroids]
-            direction = centroid[1] - np.mean(y_axis)
+            mov_dir = centroid[1] - np.mean([c[1] for c in obj.centroids])
             obj.centroids.append(centroid)
 
-            if not obj.counted:  # push into queue instead
-                if direction < 0 and centroid[1] < self.frame_height // 2:
-                    self._put_telemetry("UP")
+            if not obj.counted:
+                if mov_dir < 0 and centroid[1] < self.frame_height // 2:
+                    self.__put_telemetry("UP")
+                    print("DOWN")
                     obj.counted = True
 
-                elif direction > 0 and centroid[1] > self.frame_height // 2:
-                    self._put_telemetry("DOWN")
+                elif mov_dir > 0 and centroid[1] > self.frame_height // 2:
+                    self.__put_telemetry("DOWN")
+                    print("UP")
                     obj.counted = True
 
             self.trackable_objects[object_id] = obj
@@ -99,9 +103,9 @@ class EntryTracker:
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         rects = []
         if refresh_trackers:
-            self._refresh_trackers(frame, rgb)
+            self.__refresh_trackers(frame, rgb)
         else:
-            rects = self._update_trackers(rgb)
+            rects = self.__update_trackers(rgb)
 
         objects = self.centroid_tracker.update(rects)
-        self._register_entries(objects)
+        self.__register_entries(objects)

@@ -1,8 +1,10 @@
-from typing import Tuple
-import numpy as np
-from statistics import geometric_mean
-from telemetry import LumaTelemetry
 from datetime import datetime
+from typing import Tuple
+from statistics import geometric_mean
+
+import numpy as np
+
+from telemetry import LumaTelemetry
 
 
 class LumaCalculator:

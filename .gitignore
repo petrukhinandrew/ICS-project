@@ -1,7 +1,3 @@
 videos/
 __pycache__/
-mylib/__pycache__/
-luma/img/
-luma/__pycache__/
 .vscode/
-logs.db
