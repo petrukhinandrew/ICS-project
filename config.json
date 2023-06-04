@@ -1,0 +1,9 @@
+{
+    "skip_frames": 30,
+    "net_confidence": 0.4,
+    "host": "demo.thingsboard.io",
+    "cam_addr": "video_samples/video_sample.mp4",
+    "entry_at": "aAqri1wXBNUu7s6CGnom",
+    "luma_at": "AfSqL24ip9yNJJ9xNxoU"
+
+}

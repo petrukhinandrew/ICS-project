@@ -29,7 +29,7 @@ class EntryTracker:
         self.telemetry_queue = telemetry_queue
 
     def __refresh_trackers(self, frame, rgb):
-        self.trackers.clear()
+        self.trackers = []
 
         blob = cv2.dnn.blobFromImage(
             frame, 0.007843, (self.frame_width, self.frame_height), 127.5)
@@ -60,12 +60,12 @@ class EntryTracker:
             tracker.update(rgb)
             pos = tracker.get_position()
 
-            startX = int(pos.left())
-            startY = int(pos.top())
-            endX = int(pos.right())
-            endY = int(pos.bottom())
+            x0 = int(pos.left())
+            y0 = int(pos.top())
+            x1 = int(pos.right())
+            y1 = int(pos.bottom())
 
-            rects.append((startX, startY, endX, endY))
+            rects.append((x0, y0, x1, y1))
         return rects
 
     def __put_telemetry(self, direction):
@@ -74,15 +74,16 @@ class EntryTracker:
         self.telemetry_queue.put(TelemetryWrapper(
             TelemetryType.T_ENTRY, telemetry))
 
-    def __register_entries(self, frame, objects):
+    def __register_entries(self, objects):
         coords = []
         for (object_id, centroid) in objects.items():
             obj = self.trackable_objects.get(object_id, None)
+            
+            coords.append((centroid[0], centroid[1]))
 
             if obj is None:
                 obj = TrackableObject(object_id, centroid)
                 self.trackable_objects[object_id] = obj
-                coords.append((centroid[0], centroid[1]))
                 continue
 
             mov_dir = centroid[1] - np.mean([c[1] for c in obj.centroids])
@@ -98,9 +99,10 @@ class EntryTracker:
                     self.__put_telemetry("DOWN")
                     print("DOWN")
                     obj.counted = True
-            coords.append((centroid[0], centroid[1]))
+
             self.trackable_objects[object_id] = obj
         return coords
+
     def process(self, frame, refresh_trackers):
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         rects = []
@@ -110,4 +112,4 @@ class EntryTracker:
             rects = self.__update_trackers(rgb)
 
         objects = self.centroid_tracker.update(rects)
-        return  self.__register_entries(frame, objects)
+        return self.__register_entries(objects)
