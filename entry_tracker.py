@@ -1,9 +1,8 @@
 import cv2
 import dlib
 import numpy as np
-from mylib.centroidtracker import CentroidTracker
-from mylib.trackableobject import TrackableObject
-from mylib import config
+from centroid_tracker import CentroidTracker
+from trackable_object import TrackableObject
 from telemetry import EntryTelemetry, TelemetryWrapper, TelemetryType
 from datetime import datetime
 NET_CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
@@ -13,12 +12,17 @@ NET_CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
 
 
 class EntryTracker:
-    def __init__(self, telemetry_queue) -> None:
+    def __init__(self, frame_width, frame_height, confidence, telemetry_queue) -> None:
         self.centroid_tracker = CentroidTracker(40, 50)
         self.trackers = []
         self.trackable_objects = {}
+
         self.net = cv2.dnn.readNetFromCaffe(
             "mobilenet_ssd/MobileNetSSD_deploy.prototxt", "mobilenet_ssd/MobileNetSSD_deploy.caffemodel")
+        
+        self.frame_width = frame_width
+        self.frame_height = frame_height
+        self.confidence = confidence
         self.telemetry_queue = telemetry_queue
 
     def _refresh_trackers(self, frame, rgb):
@@ -32,7 +36,7 @@ class EntryTracker:
         for i in np.arange(0, detections.shape[2]):
             confidence = detections[0, 0, i, 2]
 
-            if confidence > config.Confidence:
+            if confidence > self.confidence:
                 class_id = int(detections[0, 0, i, 1])
                 if NET_CLASSES[class_id] != "person":
                     continue
@@ -62,7 +66,8 @@ class EntryTracker:
         return rects
 
     def _put_telemetry(self, direction):
-        telemetry = EntryTelemetry(datetime.now(), direction)
+        telemetry = EntryTelemetry(
+            datetime.now().isoformat(sep=" "), direction)
         self.telemetry_queue.put(TelemetryWrapper(
             TelemetryType.T_ENTRY, telemetry))
 

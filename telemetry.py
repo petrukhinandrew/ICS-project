@@ -1,25 +1,25 @@
 from tb_device_mqtt import TBDeviceMqttClient, TBPublishInfo
-from enum import Enum
+import enum
 from dataclasses import dataclass
-import datetime
 
 
-class TelemetryType(Enum):
+class TelemetryType(enum.Enum):
     T_ENTRY = 0
     T_LUMA = 1
 
 
 @dataclass
 class EntryTelemetry:
-    timestamp: datetime.datetime
+    timestamp: str
     direction: str
 
     def as_dict(self):
-        pass
+        return {"timestamp": self.timestamp, "direction": self.direction}
 
 
 @dataclass
 class LumaTelemetry:
+    timemstamp: str
     mean_luma: float
     geom_mean_luma: float
     mean_lightness: float
@@ -30,7 +30,17 @@ class LumaTelemetry:
     median_filtered_lightness: float
 
     def as_dict(self):
-        pass
+        return {
+            "timestamp": self.timemstamp,
+            "mean luma": self.mean_luma,
+            "geometric mean luma": self.geom_mean_luma,
+            "mean lightness": self.mean_lightness,
+            "geometric mean lightness": self.geom_mean_lightness,
+            "median lightness": self.median_lightness,
+            "mean filtered lightness": self.mean_filtered_lightness,
+            "geometric mean filtered lightness": self.geom_mean_filtered_lightness,
+            "median filtered lightness": self.median_filtered_lightness
+        }
 
 
 @dataclass
@@ -48,7 +58,7 @@ class TelemetrySender:
     def __del__(self):
         self.client.disconnect()
 
-    def send(self, telemetry):
-        sent = self.client.send_telemetry(telemetry)
-        if sent != TBPublishInfo.TB_ERR_SUCCESS:
+    def send(self, telemetry: EntryTelemetry | LumaTelemetry):
+        response = self.client.send_telemetry(telemetry.as_dict())
+        if response.get() != TBPublishInfo.TB_ERR_SUCCESS:
             raise Exception('Telemetry was not sent')

@@ -14,8 +14,8 @@ Threshold = 10
 # Threading ON/OFF
 Thread = False
 HOST = "demo.thingsboard.io"
-CAM_DT = "8JpXCiP482pz9y7tBF9t"
-LUMA_DT = ""
+CAM_DT = "aAqri1wXBNUu7s6CGnom"
+LUMA_DT = "AfSqL24ip9yNJJ9xNxoU"
 SkipFrames = 30
 Confidence = 0.4
 ShowVideo = False

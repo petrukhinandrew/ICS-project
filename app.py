@@ -1,16 +1,16 @@
 from imutils.video import VideoStream
 from imutils.video import FPS
-from mylib import config
+import config
 import imutils
 from luma_device import LumaDevice
 from entry_tracker import EntryTracker
 from queue import Queue
 from threading import Thread
-import cv2
+# import cv2
 import time
 from telemetry import TelemetryType, TelemetrySender
 
-LUMA_DELAY = 10
+LUMA_DELAY = 60
 
 
 class App:
@@ -34,7 +34,8 @@ class App:
         self.luma_thread.start()
 
     def __setup_tracker(self):
-        self.entry_tracker = EntryTracker(self.telemetry_queue)
+        self.entry_tracker = EntryTracker(
+            self.frame_width, self.frame_height, config.Confidence, self.telemetry_queue)
 
     def __setup_video(self):
         self.vs = VideoStream(config.url).start()
@@ -50,7 +51,9 @@ class App:
 
     def _send_telemetry(self):
         while not self.telemetry_queue.empty():
-            (telemetry_type, telemetry) = self.telemetry_queue.get()
+            wrapper = self.telemetry_queue.get()
+            telemetry_type, telemetry = wrapper.type, wrapper.telemetry
+            print(telemetry)
             if telemetry_type == TelemetryType.T_ENTRY:
                 self.entry_sender.send(telemetry)
             elif telemetry_type == TelemetryType.T_LUMA:
@@ -63,19 +66,20 @@ class App:
         while 1:
             frame = self._get_frame()
 
-            cv2.imshow("lolkek", frame)
-            if cv2.waitKey(25) & 0xFF == ord('q'):
-                break
+            # cv2.imshow("lolkek", frame)
+            # if cv2.waitKey(25) & 0xFF == ord('q'):
+            #     break
 
             if time.time() - self.luma_last_frame > LUMA_DELAY:
                 self.luma_frame_queue.put(frame.copy())
                 self.luma_last_frame = time.time()
 
-            self.entry_tracker.process(frame, self.total_frames % config.SkipFrames == 0)
+            self.entry_tracker.process(
+                frame, self.total_frames % config.SkipFrames == 0)
 
             self._send_telemetry()
 
-        cv2.destroyAllWindows()
+        # cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":

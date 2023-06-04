@@ -2,11 +2,12 @@ from typing import Tuple
 import numpy as np
 from statistics import geometric_mean
 from telemetry import LumaTelemetry
+from datetime import datetime
 
 
 class LumaCalculator:
-    BLACK_THR, WHITE_THR: float = 9.0, 95.0
-    BLACK_LIM, WHITE_LIM: float = 0.6, 0.6
+    BLACK_THR, WHITE_THR = 9.0, 95.0
+    BLACK_LIM, WHITE_LIM = 0.6, 0.6
 
     def calculate(pic: np.ndarray) -> LumaTelemetry:
         luma_vector = LumaCalculator.__picture_luma(pic)
@@ -15,7 +16,7 @@ class LumaCalculator:
         filtered_lightness_vector = LumaCalculator.__filter_lightness_vector(
             lightness_vector)
 
-        return LumaTelemetry(*(np.mean(luma_vector), geometric_mean(luma_vector)) + LumaCalculator.__calculate_lightness_values(lightness_vector) + LumaCalculator.__calculate_lightness_values(filtered_lightness_vector))
+        return LumaTelemetry(*(datetime.now().isoformat(sep=" "), np.mean(luma_vector), geometric_mean(luma_vector)) + LumaCalculator.__calculate_lightness_values(lightness_vector) + LumaCalculator.__calculate_lightness_values(filtered_lightness_vector))
 
     @staticmethod
     def __calculate_lightness_values(lightness_vector: np.ndarray) -> Tuple[float, float, float]:
