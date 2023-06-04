@@ -1,5 +1,6 @@
-from scipy.spatial import distance as dist
 from collections import OrderedDict
+
+from scipy.spatial import distance as dist
 import numpy as np
 
 

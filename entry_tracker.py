@@ -16,7 +16,7 @@ NET_CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
 
 class EntryTracker:
     def __init__(self, frame_width, frame_height, confidence, telemetry_queue) -> None:
-        self.centroid_tracker = CentroidTracker(40, 15)
+        self.centroid_tracker = CentroidTracker(40, 50)
         self.trackers = []
         self.trackable_objects = {}
 
@@ -46,10 +46,10 @@ class EntryTracker:
 
                 box = detections[0, 0, i, 3:7] * np.array(
                     [self.frame_width, self.frame_height, self.frame_width, self.frame_height])
-                (startX, startY, endX, endY) = box.astype("int")
+                (x0, y0, x1, y1) = box.astype("int")
 
                 corr_tracker = dlib.correlation_tracker()
-                rect = dlib.rectangle(startX, startY, endX, endY)
+                rect = dlib.rectangle(x0, y0, x1, y1)
                 corr_tracker.start_track(rgb, rect)
 
                 self.trackers.append(corr_tracker)
@@ -74,13 +74,15 @@ class EntryTracker:
         self.telemetry_queue.put(TelemetryWrapper(
             TelemetryType.T_ENTRY, telemetry))
 
-    def __register_entries(self, objects):
+    def __register_entries(self, frame, objects):
+        coords = []
         for (object_id, centroid) in objects.items():
             obj = self.trackable_objects.get(object_id, None)
 
             if obj is None:
                 obj = TrackableObject(object_id, centroid)
                 self.trackable_objects[object_id] = obj
+                coords.append((centroid[0], centroid[1]))
                 continue
 
             mov_dir = centroid[1] - np.mean([c[1] for c in obj.centroids])
@@ -89,16 +91,16 @@ class EntryTracker:
             if not obj.counted:
                 if mov_dir < 0 and centroid[1] < self.frame_height // 2:
                     self.__put_telemetry("UP")
-                    print("DOWN")
+                    print("UP")
                     obj.counted = True
 
                 elif mov_dir > 0 and centroid[1] > self.frame_height // 2:
                     self.__put_telemetry("DOWN")
-                    print("UP")
+                    print("DOWN")
                     obj.counted = True
-
+            coords.append((centroid[0], centroid[1]))
             self.trackable_objects[object_id] = obj
-
+        return coords
     def process(self, frame, refresh_trackers):
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         rects = []
@@ -108,4 +110,4 @@ class EntryTracker:
             rects = self.__update_trackers(rgb)
 
         objects = self.centroid_tracker.update(rects)
-        self.__register_entries(objects)
+        return  self.__register_entries(frame, objects)

@@ -1,5 +1,7 @@
 import enum
 from dataclasses import dataclass
+from threading import Thread
+from queue import Queue
 
 from tb_device_mqtt import TBDeviceMqttClient, TBPublishInfo
 
@@ -51,15 +53,34 @@ class TelemetryWrapper:
 
 
 class TelemetrySender:
-    def __init__(self, host, device_token):
-        self.client = TBDeviceMqttClient(
-            host=host, username=device_token)
-        self.client.connect()
+    def __init__(self, host: str, entry_at: str, luma_at: str, telemetry_queue: str):
+        self.entry_client = TBDeviceMqttClient(
+            host=host, username=entry_at)
+        self.entry_client.connect()
+
+        self.luma_client = TBDeviceMqttClient(
+            host=host, username=luma_at)
+        self.luma_client.connect()
+
+        self.telemetry_queue: Queue = telemetry_queue
+
+        self.thread = Thread(target=self.send, daemon=True)
+        self.thread.start()
 
     def __del__(self):
-        self.client.disconnect()
+        self.entry_client.disconnect()
+        self.luma_client.disconnect()
 
-    def send(self, telemetry: EntryTelemetry | LumaTelemetry):
-        response = self.client.send_telemetry(telemetry.as_dict())
-        if response.get() != TBPublishInfo.TB_ERR_SUCCESS:
-            raise Exception('Telemetry was not sent')
+    def send(self):
+        while not self.telemetry_queue.empty():
+            wrapped = self.telemetry_queue.get()
+            response = None
+            if wrapped.type == TelemetryType.T_ENTRY:
+                response = self.entry_client.send_telemetry(wrapped.telemetry)
+            elif wrapped.type == TelemetryType.T_LUMA:
+                response = self.luma_client.send_telemetry(wrapped.telemetry)
+            if response == None:
+                raise Exception("Bad telemetry type")
+            if response.get() != TBPublishInfo.TB_ERR_SUCCESS:
+                Exception("Telemetry was not sent")
+        
