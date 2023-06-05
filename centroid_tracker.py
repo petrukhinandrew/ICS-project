@@ -5,7 +5,7 @@ import numpy as np
 
 
 class CentroidTracker:
-    def __init__(self, disappeared_remove_delay=50, max_centroid_dist=50):
+    def __init__(self, disappeared_remove_delay=30, max_centroid_dist=50):
         self.next_object_id = 0
         self.objects = OrderedDict()
         self.disappeared = OrderedDict()

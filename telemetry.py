@@ -1,4 +1,5 @@
 import enum
+import time
 from dataclasses import dataclass
 from threading import Thread
 from queue import Queue
@@ -53,7 +54,7 @@ class TelemetryWrapper:
 
 
 class TelemetrySender:
-    def __init__(self, host: str, entry_at: str, luma_at: str, telemetry_queue: str):
+    def __init__(self, host: str, entry_at: str, luma_at: str, telemetry_queue: Queue):
         self.entry_client = TBDeviceMqttClient(
             host=host, username=entry_at)
         self.entry_client.connect()
@@ -64,7 +65,7 @@ class TelemetrySender:
 
         self.telemetry_queue: Queue = telemetry_queue
 
-        self.thread = Thread(target=self.send, daemon=True)
+        self.thread = Thread(target=self.send, daemon=False)
         self.thread.start()
 
     def __del__(self):
@@ -72,15 +73,17 @@ class TelemetrySender:
         self.luma_client.disconnect()
 
     def send(self):
-        while not self.telemetry_queue.empty():
-            wrapped = self.telemetry_queue.get()
-            response = None
-            if wrapped.type == TelemetryType.T_ENTRY:
-                response = self.entry_client.send_telemetry(wrapped.telemetry)
-            elif wrapped.type == TelemetryType.T_LUMA:
-                response = self.luma_client.send_telemetry(wrapped.telemetry)
-            if response == None:
-                raise Exception("Bad telemetry type")
-            if response.get() != TBPublishInfo.TB_ERR_SUCCESS:
-                Exception("Telemetry was not sent")
-        
+        while True:
+            if not self.telemetry_queue.empty():
+                wrapped = self.telemetry_queue.get()
+                response = None
+                if wrapped.type == TelemetryType.T_ENTRY:
+                    response = self.entry_client.send_telemetry(wrapped.telemetry.as_dict())
+                elif wrapped.type == TelemetryType.T_LUMA:
+                    response = self.luma_client.send_telemetry(wrapped.telemetry.as_dict())
+                if response == None:
+                    raise Exception("Bad telemetry type")
+                if response.get() != TBPublishInfo.TB_ERR_SUCCESS:
+                    Exception("Telemetry was not sent")
+            time.sleep(0.1)
+            

@@ -1,6 +1,4 @@
-schedule
 numpy
-argparse
 imutils
 opencv-python
 scipy
